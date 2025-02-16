@@ -5,6 +5,13 @@ const client = new Client({
     authStrategy: new LocalAuth()
 });
 
+// ⚠️ Cambia esto a `true` si quieres que el bot solo te responda a ti
+const MODO_PRUEBA_PERSONAL = false;
+
+// Tu número de WhatsApp en formato internacional (sin "+", pero con código de país)
+// Ejemplo: "+51 987654321" → "51987654321@c.us"
+const NUMERO_PROPIETARIO = "51935711810@c.us";
+
 // Estados de usuarios y última interacción
 let estados = {};
 let ultimosMensajes = {};
@@ -24,9 +31,15 @@ client.on('ready', () => {
 client.on('message', async message => {
     const chatId = message.from;
 
-    // Ignorar estados y grupos
+    // Ignorar mensajes de estados y grupos
     if (message.type === 'status' || message.from.includes('@g.us') || message.from.includes('broadcast')) {
         console.log(`🚫 Mensaje ignorado de estado/broadcast/grupo: ${message.body}`);
+        return;
+    }
+
+    // 🛠 Solo responderte a ti si está activado el modo de prueba
+    if (MODO_PRUEBA_PERSONAL && chatId !== NUMERO_PROPIETARIO) {
+        console.log(`⚠️ MODO PRUEBA ACTIVADO: Ignorando mensaje de ${chatId}`);
         return;
     }
 
