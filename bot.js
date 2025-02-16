@@ -5,18 +5,10 @@ const client = new Client({
     authStrategy: new LocalAuth()
 });
 
-// ⚠️ Cambia esto a `true` si quieres que el bot solo te responda a ti
-const MODO_PRUEBA_PERSONAL = false;
-
-// Tu número de WhatsApp en formato internacional (sin "+", pero con código de país)
-// Ejemplo: "+51 987654321" → "51987654321@c.us"
 const NUMERO_PROPIETARIO = "51935711810@c.us";
-
-// Estados de usuarios y última interacción
+const MODO_PRUEBA_PERSONAL = false;
 let estados = {};
 let ultimosMensajes = {};
-
-// Tiempo para volver a mostrar el mensaje de bienvenida (en días)
 const DIAS_ESPERA_BIENVENIDA = 3;
 
 client.on('qr', qr => {
@@ -31,13 +23,11 @@ client.on('ready', () => {
 client.on('message', async message => {
     const chatId = message.from;
 
-    // Ignorar mensajes de estados y grupos
     if (message.type === 'status' || message.from.includes('@g.us') || message.from.includes('broadcast')) {
         console.log(`🚫 Mensaje ignorado de estado/broadcast/grupo: ${message.body}`);
         return;
     }
 
-    // 🛠 Solo responderte a ti si está activado el modo de prueba
     if (MODO_PRUEBA_PERSONAL && chatId !== NUMERO_PROPIETARIO) {
         console.log(`⚠️ MODO PRUEBA ACTIVADO: Ignorando mensaje de ${chatId}`);
         return;
@@ -46,21 +36,23 @@ client.on('message', async message => {
     console.log(`📩 Mensaje recibido de ${message.from}: ${message.body}`);
 
     let texto = message.body.trim().toLowerCase();
-
-    // Verificar si el usuario ha interactuado recientemente
     let ultimaInteraccion = ultimosMensajes[chatId] || 0;
     let tiempoActual = Date.now();
     let diferenciaDias = (tiempoActual - ultimaInteraccion) / (1000 * 60 * 60 * 24);
 
-    // Si es la primera vez o han pasado más de DIAS_ESPERA_BIENVENIDA, mostrar el mensaje de bienvenida
     if (!estados[chatId] || diferenciaDias >= DIAS_ESPERA_BIENVENIDA) {
-        await client.sendMessage(chatId,
-            "🎓 *¡Bienvenido al asistente de Maestrías de la Facultad de Educación!* 🤖\n" +
-            "Seleccione la maestría que le interesa respondiendo con el número:\n" +
-            "1️⃣ Didáctica de la Comunicación\n" +
-            "2️⃣ Didáctica de la Matemática\n" +
-            "🌀 Escriba *volver* en cualquier momento para regresar o *inicio* para empezar de nuevo."
-        );
+        try {
+            await client.sendMessage(chatId,
+                "🎓 *¡Bienvenido al asistente de Maestrías de la Facultad de Educación!* 🤖\n" +
+                "Seleccione la maestría que le interesa respondiendo con el número:\n" +
+                "1️⃣ Didáctica de la Comunicación\n" +
+                "2️⃣ Didáctica de la Matemática\n" +
+                "🌀 Escriba *volver* en cualquier momento para regresar o *inicio* para empezar de nuevo."
+            );
+        } catch (error) {
+            console.error("❌ Error al enviar mensaje de bienvenida:", error);
+        }
+
         estados[chatId] = { paso: 1 };
         ultimosMensajes[chatId] = tiempoActual;
         return;
@@ -68,20 +60,30 @@ client.on('message', async message => {
 
     let paso = estados[chatId].paso;
 
-    // Reiniciar conversación
     if (texto === "inicio") {
         delete estados[chatId];
-        await client.sendMessage(chatId, "🔄 Se ha reiniciado la conversación. Escriba *hola* para comenzar.");
+        try {
+            await client.sendMessage(chatId, "🔄 Se ha reiniciado la conversación. Escriba *hola* para comenzar.");
+        } catch (error) {
+            console.error("❌ Error al reiniciar la conversación:", error);
+        }
         return;
     }
 
-    // Volver al paso anterior con restricción
     if (texto === "volver") {
         if (paso > 1) {
             estados[chatId].paso -= 1;
-            await client.sendMessage(chatId, "⏪ Has regresado al paso anterior. Continuemos...");
+            try {
+                await client.sendMessage(chatId, "⏪ Has regresado al paso anterior. Continuemos...");
+            } catch (error) {
+                console.error("❌ Error al retroceder de paso:", error);
+            }
         } else {
-            await client.sendMessage(chatId, "⚠️ Ya estás en el inicio. Usa *inicio* para comenzar de nuevo.");
+            try {
+                await client.sendMessage(chatId, "⚠️ Ya estás en el inicio. Usa *inicio* para comenzar de nuevo.");
+            } catch (error) {
+                console.error("❌ Error en el mensaje de restricción:", error);
+            }
         }
         return;
     }
@@ -93,68 +95,99 @@ client.on('message', async message => {
             } else if (texto === "2") {
                 estados[chatId].maestria = "Didáctica de la Matemática";
             } else {
-                await client.sendMessage(chatId, "❌ Opción inválida. Responda con 1 o 2.");
+                try {
+                    await client.sendMessage(chatId, "❌ Opción inválida. Responda con 1 o 2.");
+                } catch (error) {
+                    console.error("❌ Error al validar opción:", error);
+                }
                 return;
             }
-            await client.sendMessage(chatId,
-                `📘 Ha seleccionado la maestría en *${estados[chatId].maestria}*.\n` +
-                "¿Qué información desea saber?\n" +
-                "1️⃣ Requisitos\n" +
-                "2️⃣ Costos\n" +
-                "3️⃣ Modalidad de estudio\n" +
-                "🌀 Escriba *volver* para regresar o *inicio* para empezar de nuevo."
-            );
+            try {
+                await client.sendMessage(chatId,
+                    `📘 Ha seleccionado la maestría en *${estados[chatId].maestria}*.\n` +
+                    "¿Qué información desea saber?\n" +
+                    "1️⃣ Requisitos\n" +
+                    "2️⃣ Costos\n" +
+                    "3️⃣ Modalidad de estudio\n" +
+                    "🌀 Escriba *volver* para regresar o *inicio* para empezar de nuevo."
+                );
+            } catch (error) {
+                console.error("❌ Error al enviar opciones de maestría:", error);
+            }
             estados[chatId].paso = 2;
             break;
 
         case 2:
-            if (texto === "1") {
-                await client.sendMessage(chatId,
-                    "📑 *Requisitos para la maestría:*\n" +
-                    "- Título profesional\n" +
-                    "- Copia de DNI/Pasaporte\n" +
-                    "- CV actualizado\n" +
-                    "- Pago de matrícula\n" +
-                    "🌀 Escriba *volver* para regresar o *inicio* para empezar de nuevo."
-                );
-            } else if (texto === "2") {
-                await client.sendMessage(chatId,
-                    "💰 *Costos de la maestría:*\n" +
-                    "- Inscripción: S/. 250\n" +
-                    "- Costo por ciclo: S/. 3,500\n" +
-                    "- Duración: 4 ciclos\n" +
-                    "🌀 Escriba *volver* para regresar o *inicio* para empezar de nuevo."
-                );
-            } else if (texto === "3") {
-                await client.sendMessage(chatId,
-                    "🎓 *Modalidad de estudio:*\n" +
-                    "- Clases virtuales y presenciales\n" +
-                    "- Horarios flexibles para profesionales\n" +
-                    "🌀 Escriba *volver* para regresar o *inicio* para empezar de nuevo."
-                );
+            let respuestas = {
+                "1": "📑 *Requisitos para la maestría:*\n- Título profesional\n- Copia de DNI/Pasaporte\n- CV actualizado\n- Pago de matrícula",
+                "2": "💰 *Costos de la maestría:*\n- Inscripción: S/. 250\n- Costo por ciclo: S/. 3,500\n- Duración: 4 ciclos",
+                "3": "🎓 *Modalidad de estudio:*\n- Clases virtuales y presenciales\n- Horarios flexibles para profesionales"
+            };
+        
+            if (respuestas[texto]) {
+                try {
+                    await client.sendMessage(chatId, respuestas[texto] + "\n\n🌀 Escriba *volver* para regresar o *inicio* para empezar de nuevo.");
+                } catch (error) {
+                    console.error("❌ Error al enviar respuesta:", error);
+                }
+        
+                // Ahora preguntar si desea más información
+                try {
+                    await client.sendMessage(chatId,
+                        "📢 *¿Desea más información?*\n" +
+                        "1️⃣ Sí, más detalles\n" +
+                        "2️⃣ No, gracias"
+                    );
+                } catch (error) {
+                    console.error("❌ Error al enviar la pregunta de más información:", error);
+                }
+        
+                estados[chatId].paso = 3;
             } else {
-                await client.sendMessage(chatId, "❌ Opción inválida. Responda con 1, 2 o 3.");
-                return;
+                try {
+                    await client.sendMessage(chatId, "❌ Opción inválida. Responda con 1, 2 o 3.");
+                } catch (error) {
+                    console.error("❌ Error en validación:", error);
+                }
             }
-            estados[chatId].paso = 3;
             break;
-
+        
         case 3:
-            if (texto === "1") {
-                await client.sendMessage(chatId,
-                    "📌 Puede visitar nuestra página web para más información: https://posgrado.universidad.edu.pe\n" +
-                    "También puede escribirnos al correo 📧 info@universidad.edu.pe\n" +
-                    "🌀 Escriba *volver* para regresar o *inicio* para empezar de nuevo."
-                );
-            } else if (texto === "2") {
-                await client.sendMessage(chatId, "😊 ¡Gracias por su consulta! Estamos para ayudarle.");
-                delete estados[chatId]; // Finalizar conversación
+            if (texto === "1") { // Si el usuario desea más información
+                try {
+                    await client.sendMessage(chatId,
+                        "📌 Puede visitar nuestra página web para más información: https://posgradoeducacion.unmsm.edu.pe/programas/maestrias\n" +
+                        "📧 También puede escribirnos al correo: upg.educacion@unmsm.edu.pe\n" +
+                        "☎️ O llamarnos al número: +51 987654321\n\n" +
+                        "🌀 Escriba *volver* para regresar o *inicio* para empezar de nuevo."
+                    );
+                } catch (error) {
+                    console.error("❌ Error al enviar detalles adicionales:", error);
+                }
+            } else if (texto === "2") { // Si el usuario ya no desea más información
+                try {
+                    await client.sendMessage(chatId, "😊 ¡Gracias por su consulta! Estamos para ayudarle.");
+                } catch (error) {
+                    console.error("❌ Error al finalizar la conversación:", error);
+                }
+                delete estados[chatId]; // Finalizar la conversación
             } else {
-                await client.sendMessage(chatId, "❌ Opción inválida. Responda con 1 o 2.");
-                return;
+                try {
+                    await client.sendMessage(chatId, "❌ Opción inválida. Responda con 1 o 2.");
+                } catch (error) {
+                    console.error("❌ Error en validación de opciones finales:", error);
+                }
             }
             break;
+            
     }
+});
+
+// Reiniciar en caso de desconexión
+client.on('disconnected', (reason) => {
+    console.log(`⚠️ Cliente desconectado. Razón: ${reason}`);
+    console.log("🔄 Reiniciando cliente...");
+    client.initialize();
 });
 
 // Iniciar bot
